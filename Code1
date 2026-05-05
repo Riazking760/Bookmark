@@ -1,0 +1,86 @@
+// === TradingCore Module ===
+const TradingCore = (() => {
+  const state = {
+    profit: 0,
+    baseMultiplier: 0.85,
+    volatility: 0.3,
+    isRunning: true,
+    tickSpeed: 180,
+    leaderboard: [],
+    notifications: [],
+    id: 0
+  };
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  function generateEntry(name, profit) {
+    return { id: ++state.id, name, profit, rank: 0 };
+  }
+
+  function tickProfit() {
+    const change = (Math.random() - 0.45) * state.volatility * 100;
+    const drift = state.baseMultiplier * 0.01;
+    state.profit = Math.max(-999999, state.profit + change + drift);
+    return state.profit;
+  }
+
+  function seedLeaderboard(count = 20) {
+    const names = [
+      "AlphaQuant", "LunaTrade", "CryptoViper", "DiamondHands", "Satoshi_Son",
+      "WolfOfWallSt", "BondTrader", "NeuralDip", "PumpDumpPro", "HODL_King",
+      "FlashLoan_Frank", "Arbitrage_AI", "GammaSqueeze", "MoonBoi_420", "RektHunter",
+      "QuantMamba", "ThetaGang420", "WhaleWatch", "DipDoctor", "MarginCall_Mike",
+      "Leverage_Larry", "StopLoss_Steve", "YieldFarmer", "DeFi_Degen", "BagHolder_Bob"
+    ];
+    for (let i = 0; i < count; i++) {
+      const name = names[i % names.length] + (i >= names.length ? i : '');
+      const profit = rand(-5000, 25000) + (count - i) * rand(100, 900);
+      state.leaderboard.push(generateEntry(name, profit));
+    }
+    recalcRanks();
+  }
+
+  function recalcRanks() {
+    state.leaderboard.sort((a, b) => b.profit - a.profit);
+    state.leaderboard.forEach((e, i) => e.rank = i + 1);
+  }
+
+  function addNotification(title, message, type = 'info') {
+    const notif = { id: ++state.id, title, message, type, timestamp: Date.now() };
+    state.notifications.unshift(notif);
+    if (state.notifications.length > 20) state.notifications.pop();
+    return notif;
+  }
+
+  function generateRandomNotif() {
+    const events = [
+      { t: 'Liquidated', m: () => `${rand(0.1, 5).toFixed(2)}x leveraged position closed` },
+      { t: 'Limit Hit', m: () => `Take-profit triggered at $${rand(10000, 50000).toFixed(0)}` },
+      { t: 'Whale Alert', m: () => `${rand(100, 5000).toFixed(0)} BTC moved to unknown wallet` },
+      { t: 'Copy Trade', m: () => `Followed ${['AlphaQuant','LunaTrade','NeuralDip'][Math.floor(Math.random()*3)]}'s latest trade` },
+      { t: 'Gas Fee', m: () => `Paid $${rand(0.5, 45).toFixed(2)} in gas fees` },
+      { t: 'Bot Update', m: () => `Strategy ${['Gamma Neutral','Delta Hedge','TWAP'][Math.floor(Math.random()*3)]} activated` },
+    ];
+    const ev = events[Math.floor(Math.random() * events.length)];
+    return addNotification(ev.t, ev.m(), ['success','warning','error','info'][Math.floor(Math.random()*4)]);
+  }
+
+  function shuffleLeaderboard() {
+    state.leaderboard.forEach(e => {
+      e.profit += rand(-150, 200);
+    });
+    recalcRanks();
+  }
+
+  return {
+    state,
+    tickProfit,
+    seedLeaderboard,
+    generateRandomNotif,
+    shuffleLeaderboard,
+    recalcRanks,
+    addNotification,
+    generateEntry,
+    rand
+  };
+})();

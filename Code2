@@ -1,0 +1,201 @@
+// === TradingUI Module ===
+const TradingUI = (() => {
+  let container = null;
+  let stylesInjected = false;
+
+  function injectStyles() {
+    if (stylesInjected) return;
+    stylesInjected = true;
+    const css = `
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+      .td-overlay * { all: revert; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      .td-overlay { all: initial; display: block; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2147483647; pointer-events: none; font-family: 'Inter', system-ui, sans-serif; }
+      .td-overlay > * { pointer-events: auto; }
+      .td-topbar { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(10,12,22,0.92); backdrop-filter: blur(16px); border: 1px solid rgba(99,102,241,0.25); border-radius: 14px; padding: 8px 22px; display: flex; align-items: center; gap: 28px; box-shadow: 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06); z-index: 10; }
+      .td-topbar-title { color: #818cf8; font-weight: 700; font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; }
+      .td-topbar-profit { font-weight: 800; font-size: 22px; letter-spacing: -0.5px; transition: color 0.2s; min-width: 130px; text-align: right; }
+      .td-topbar-profit.pos { color: #22c55e; }
+      .td-topbar-profit.neg { color: #ef4444; }
+      .td-topbar-profit .currency { font-size: 14px; font-weight: 600; opacity: 0.7; }
+      .td-topbar-change { font-size: 12px; font-weight: 500; background: rgba(99,102,241,0.12); padding: 4px 10px; border-radius: 8px; color: #94a3b8; }
+      .td-topbar-time { font-size: 11px; color: #64748b; font-weight: 500; font-variant-numeric: tabular-nums; }
+      .td-btn { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.2); color: #a5b4fc; padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+      .td-btn:hover { background: rgba(99,102,241,0.25); border-color: rgba(99,102,241,0.4); color: #c7d2fe; }
+      .td-btn.red { border-color: rgba(239,68,68,0.3); color: #fca5a5; background: rgba(239,68,68,0.1); }
+      .td-btn.red:hover { background: rgba(239,68,68,0.25); color: #fecaca; }
+
+      .td-panel { position: fixed; background: rgba(10,12,22,0.88); backdrop-filter: blur(20px); border: 1px solid rgba(99,102,241,0.15); border-radius: 16px; box-shadow: 0 12px 50px rgba(0,0,0,0.5); overflow: hidden; }
+      .td-panel-header { padding: 14px 18px 8px; font-weight: 700; font-size: 13px; color: #818cf8; letter-spacing: 0.5px; }
+      .td-panel-body { padding: 0 8px 8px; overflow-y: auto; }
+      .td-panel-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: #475569; cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+      .td-panel-close:hover { color: #94a3b8; background: rgba(255,255,255,0.06); }
+
+      .td-leaderboard { width: 240px; max-height: 400px; top: 80px; right: 16px; }
+      .td-leaderboard .entry { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; font-size: 12px; transition: 0.15s; }
+      .td-leaderboard .entry:hover { background: rgba(99,102,241,0.08); }
+      .td-leaderboard .rank { width: 22px; font-weight: 700; color: #64748b; font-size: 11px; text-align: center; }
+      .td-leaderboard .rank.gold { color: #fbbf24; }
+      .td-leaderboard .rank.silver { color: #94a3b8; }
+      .td-leaderboard .rank.bronze { color: #d97706; }
+      .td-leaderboard .name { flex: 1; font-weight: 500; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .td-leaderboard .profit { font-weight: 600; font-size: 12px; font-variant-numeric: tabular-nums; }
+      .td-leaderboard .profit.pos { color: #22c55e; }
+      .td-leaderboard .profit.neg { color: #ef4444; }
+
+      .td-notif-area { position: fixed; bottom: 16px; right: 16px; display: flex; flex-direction: column-reverse; gap: 6px; max-width: 320px; z-index: 11; }
+      .td-notif { background: rgba(10,12,22,0.9); backdrop-filter: blur(16px); border: 1px solid rgba(99,102,241,0.15); border-radius: 10px; padding: 10px 14px; animation: tdSlideIn 0.3s ease-out; box-shadow: 0 4px 20px rgba(0,0,0,0.3); cursor: pointer; transition: 0.2s; }
+      .td-notif:hover { transform: translateX(-3px); }
+      .td-notif-title { font-weight: 700; font-size: 12px; color: #e2e8f0; }
+      .td-notif-msg { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+      .td-notif.success { border-left: 3px solid #22c55e; }
+      .td-notif.warning { border-left: 3px solid #f59e0b; }
+      .td-notif.error { border-left: 3px solid #ef4444; }
+      .td-notif.info { border-left: 3px solid #6366f1; }
+      .td-notif-time { font-size: 9px; color: #475569; float: right; margin-top: 2px; }
+
+      @keyframes tdSlideIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+      @keyframes tdFadeOut { to { opacity: 0; transform: translateX(40px); } }
+      .td-notif.removing { animation: tdFadeOut 0.25s ease-in forwards; }
+
+      .td-bottom-bar { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(10,12,22,0.85); backdrop-filter: blur(12px); border: 1px solid rgba(99,102,241,0.12); border-radius: 12px; padding: 6px 16px; display: flex; align-items: center; gap: 14px; font-size: 11px; color: #64748b; }
+      .td-bottom-bar .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+      .td-bottom-bar .dot.green { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.4); }
+      .td-bottom-bar .stat { font-weight: 500; }
+      .td-bottom-bar .stat span { color: #94a3b8; }
+    `;
+    const style = document.createElement('style');
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
+  function createOverlay() {
+    if (container) return container;
+    injectStyles();
+    container = document.createElement('div');
+    container.className = 'td-overlay';
+    document.body.appendChild(container);
+    return container;
+  }
+
+  function createTopbar(core) {
+    const bar = document.createElement('div');
+    bar.className = 'td-topbar';
+    bar.innerHTML = `
+      <span class="td-topbar-title">⚡ TradeDash</span>
+      <span class="td-topbar-profit pos"><span class="currency">$</span><span id="tdProfitDisplay">0.00</span></span>
+      <span class="td-topbar-change" id="tdChangeDisplay">Active</span>
+      <span class="td-topbar-time" id="tdTimeDisplay">--:--:--</span>
+      <button class="td-btn red" id="tdToggleBtn">⏸ Pause</button>
+      <button class="td-btn" id="tdNotifyBtn">🔔 Test</button>
+      <button class="td-btn" id="tdCloseBtn">✕</button>
+    `;
+    container.appendChild(bar);
+
+    bar.querySelector('#tdToggleBtn').onclick = () => {
+      core.state.isRunning = !core.state.isRunning;
+      bar.querySelector('#tdToggleBtn').textContent = core.state.isRunning ? '⏸ Pause' : '▶ Resume';
+      bar.querySelector('#tdToggleBtn').className = 'td-btn' + (core.state.isRunning ? ' red' : '');
+    };
+    bar.querySelector('#tdNotifyBtn').onclick = () => core.generateRandomNotif();
+    bar.querySelector('#tdCloseBtn').onclick = () => destroy();
+    return bar;
+  }
+
+  function createLeaderboard(core) {
+    const panel = document.createElement('div');
+    panel.className = 'td-panel td-leaderboard';
+    panel.innerHTML = `<div class="td-panel-header">🏆 Leaderboard</div><div class="td-panel-body" id="tdLBBody"></div>`;
+    container.appendChild(panel);
+    return panel;
+  }
+
+  function renderLeaderboard(core) {
+    const body = document.getElementById('tdLBBody');
+    if (!body) return;
+    body.innerHTML = core.state.leaderboard.slice(0, 15).map(e => {
+      const rankCls = e.rank === 1 ? 'gold' : e.rank === 2 ? 'silver' : e.rank === 3 ? 'bronze' : '';
+      const sign = e.profit >= 0 ? 'pos' : 'neg';
+      const fmt = Math.abs(e.profit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return `<div class="entry">
+        <span class="rank ${rankCls}">${e.rank}</span>
+        <span class="name">${e.name}</span>
+        <span class="profit ${sign}">${e.profit >= 0 ? '+' : '-'}$${fmt}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function createNotifArea() {
+    let area = container.querySelector('.td-notif-area');
+    if (!area) {
+      area = document.createElement('div');
+      area.className = 'td-notif-area';
+      container.appendChild(area);
+    }
+    return area;
+  }
+
+  function renderNotification(notif) {
+    const area = createNotifArea();
+    const el = document.createElement('div');
+    el.className = `td-notif ${notif.type}`;
+    const time = new Date(notif.timestamp).toLocaleTimeString();
+    el.innerHTML = `<div class="td-notif-title">${notif.title}</div><div class="td-notif-msg">${notif.message}</div><div class="td-notif-time">${time}</div>`;
+    area.appendChild(el);
+    setTimeout(() => { el.classList.add('removing'); setTimeout(() => el.remove(), 260); }, 3500);
+    el.onclick = () => { el.classList.add('removing'); setTimeout(() => el.remove(), 260); };
+  }
+
+  function createBottomBar(core) {
+    const bar = document.createElement('div');
+    bar.className = 'td-bottom-bar';
+    bar.innerHTML = `
+      <span><span class="dot green"></span> Live</span>
+      <span class="stat">Trades: <span id="tdTradeCount">0</span></span>
+      <span class="stat">Win Rate: <span id="tdWinRate">--</span></span>
+      <span id="tdSessionTime">Session: 00:00:00</span>
+    `;
+    container.appendChild(bar);
+    return bar;
+  }
+
+  function updateProfitDisplay(value) {
+    const el = document.getElementById('tdProfitDisplay');
+    if (!el) return;
+    const fmt = Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    el.textContent = fmt;
+    const parent = el.closest('.td-topbar-profit');
+    if (parent) {
+      parent.className = 'td-topbar-profit ' + (value >= 0 ? 'pos' : 'neg');
+    }
+  }
+
+  function updateTimeDisplay(core) {
+    const el = document.getElementById('tdTimeDisplay');
+    if (!el) return;
+    const now = new Date();
+    el.textContent = now.toLocaleTimeString('en-US', { hour12: false });
+  }
+
+  function destroy() {
+    if (container) {
+      container.remove();
+      container = null;
+    }
+  }
+
+  return {
+    init: (core) => {
+      createOverlay();
+      createTopbar(core);
+      createLeaderboard(core);
+      createBottomBar(core);
+      createNotifArea();
+      renderLeaderboard(core);
+    },
+    updateProfit: updateProfitDisplay,
+    updateTime: updateTimeDisplay,
+    renderLeaderboard,
+    renderNotification,
+    destroy
+  };
+})();

@@ -1,0 +1,81 @@
+// === TradingEngine Module ===
+const TradingEngine = (() => {
+  let loopId = null;
+  let notifInterval = null;
+  let leaderboardInterval = null;
+  let sessionStart = Date.now();
+  let tradeCount = 0;
+
+  function updateSessionTime() {
+    const el = document.getElementById('tdSessionTime');
+    if (!el) return;
+    const diff = Math.floor((Date.now() - sessionStart) / 1000);
+    const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+    const s = String(diff % 60).padStart(2, '0');
+    el.textContent = `Session: ${h}:${m}:${s}`;
+  }
+
+  function start(core) {
+    sessionStart = Date.now();
+    tradeCount = 0;
+
+    // Main profit tick loop
+    loopId = setInterval(() => {
+      if (!core.state.isRunning) return;
+      const val = core.tickProfit();
+      TradingUI.updateProfit(val);
+      tradeCount++;
+      const tc = document.getElementById('tdTradeCount');
+      if (tc) tc.textContent = tradeCount;
+      // Random win rate fudge
+      const wr = document.getElementById('tdWinRate');
+      if (wr) {
+        const rate = (55 + Math.random() * 20 - (tradeCount % 50 === 0 ? 15 : 0)).toFixed(1);
+        wr.textContent = rate + '%';
+      }
+    }, core.state.tickSpeed);
+
+    // Time update
+    setInterval(() => {
+      TradingUI.updateTime(core);
+      updateSessionTime();
+    }, 1000);
+
+    // Random notifications
+    notifInterval = setInterval(() => {
+      if (!core.state.isRunning) return;
+      if (Math.random() < 0.35) {
+        const n = core.generateRandomNotif();
+        TradingUI.renderNotification(n);
+      }
+    }, 4000);
+
+    // Leaderboard shuffle
+    leaderboardInterval = setInterval(() => {
+      if (!core.state.isRunning) return;
+      core.shuffleLeaderboard();
+      TradingUI.renderLeaderboard(core);
+      // Occasionally bump user's profit on leaderboard change
+      if (Math.random() < 0.25) {
+        core.state.profit += core.rand(50, 500);
+      }
+    }, 3000);
+
+    // Initial burst of notifications
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        const n = core.generateRandomNotif();
+        TradingUI.renderNotification(n);
+      }, i * 800 + 500);
+    }
+  }
+
+  function stop() {
+    [loopId, notifInterval, leaderboardInterval].forEach(id => {
+      if (id) { clearInterval(id); id = null; }
+    });
+  }
+
+  return { start, stop };
+})();
